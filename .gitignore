@@ -6,9 +6,5 @@ data/embeddings/Query_Embeddings.csv
 data/embeddings/Twitter_word_embeddings_CBOW.csv
 data/embeddings/vocabulary.txt
 
-data/Similarity_Scores.csv
-
-
-
 data/.DS_Store
 .DS_Store
