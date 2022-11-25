@@ -13,7 +13,7 @@ The Web search and ILI rates data sets that support this code available from Goo
 ## Basic Usage
 `FF`, `SRNN` and `IRNN` are model classes for the three neural networks in the paper. Each model has `pbounds` - the limits for each hyper parameter to be optimized with code from `Optimisation.py`, this requires some functions from `optimiser_tools.py`.
 
-Data is formatted by `DataConstructor.py`, query selection is done with `Search_Query_Selection.py` using word embeddings which can be downloaded from [here](https://figshare.com/articles/dataset/UK_Twitter_word_embeddings/4052331). 
+Data is formatted by `DataConstructor.py`, query selection is done with `Search_Query_Selection.py` using word embeddings which can be downloaded from [here](https://figshare.com/articles/dataset/UK_Twitter_word_embeddings/4052331). Similarity scores are provided for the top ~3000 queries, some are removed due to being the same query with a different word order.  
 
 Functions to compute metrics are in `Metrics.py`
 
