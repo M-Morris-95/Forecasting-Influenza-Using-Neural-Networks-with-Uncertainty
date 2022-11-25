@@ -51,6 +51,7 @@ class FF(tf.keras.Model):
 
     def __init__(self, units1=125, units2=90, kl_power=0.0, op_scale=0.01,
                  prior_scale=0.01, q_scale=0.1, n_batches=100, **kwargs):
+        # default parameters work for 7 days ahead forecasting. 
         super().__init__()
         self.kl_weight = np.power(10.0, kl_power)
         units1 = int(units1)

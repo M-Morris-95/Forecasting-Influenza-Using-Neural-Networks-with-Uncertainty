@@ -12,7 +12,7 @@ from DataConstructor import *
 # Using a class allows the __call__ function to be used for different models with different configurations
 # class is used wih bayesian optimization to find the best hyper parameters
 class Eval_Fn:
-    def __init__(self, root='', model=None, n_folds = 5, season = 2015, gamma=14, plot=True, verbose=True, n_queries=49, min_score=-25):
+    def __init__(self, root='', model=None, n_folds = 5, season = 2015, gamma=14, plot=True, verbose=True, n_queries=49, min_score=-25, **kwargs):
         self.model = model  
         self.n_folds = n_folds      # number of folda (k fold cross validation)
         self.season = season
