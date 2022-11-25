@@ -6,9 +6,6 @@ import tqdm
 
 tfd = tfp.distributions
 
-# FF model class
-
-root = 'Results/FF/'
 @tf.function
 def softplus(x, k=1.0):
     k = tf.cast(k, float)
@@ -27,9 +24,8 @@ def random_gaussian_initializer(shape, dtype):
     )
     return tf.concat([loc, scale], 0)
 
-class FF(tf.keras.Model):
-
-    # parameters for data builder
+class SRNN(tf.keras.Model):
+     # parameters for data builder
     lag = 14
     model_type = 'FF'
     forecast_type = 'single' # does the model forecast once (single) or make a series or forecasts? (feedback)
@@ -37,8 +33,7 @@ class FF(tf.keras.Model):
     query_forecast = 'False' # does the network forecast queries or just ILI?
 
     # upper and lower limits for optimization, good hyper parameters defined as standard.
-    pbounds = {'units1':(25,125),           # units in first FF layer
-               'units2':(25,125),           # units in second FF layer
+    pbounds = {'rnn_units':(25,125),        # units in rnn layer
                'n_queries':(20,100),        # number of queries
                'kl_power':(-3,0),           # KL annealing term = 10^kl_power
                'op_scale':(0.01, 0.1),      # scaling factor for output
@@ -48,17 +43,15 @@ class FF(tf.keras.Model):
                'q_scale':(0.001, 0.1)       # posterior scaling factor
                }
 
-
-    def __init__(self, units1=125, units2=90, kl_power=0.0, op_scale=0.01,
-                 prior_scale=0.01, q_scale=0.1, n_batches=100, **kwargs):
+    def __init__(self, rnn_units=25, kl_power=-3, op_scale=0.1,
+                 prior_scale=1e-4, q_scale=0.1,  gamma=28, n_batches=100, **kwargs):
         super().__init__()
-        self.kl_weight = np.power(10.0, kl_power)
-        units1 = int(units1)
-        units2 = int(units2)
 
-        self.flatten = tf.keras.layers.Flatten()
-        self.dense1 = tf.keras.layers.Dense(units = units1, activation='ReLU')
-        self.dense2 = tf.keras.layers.Dense(units = units2, activation='ReLU')
+        self.kl_weight = np.power(10.0, kl_power)
+        self.units = int(rnn_units)
+        self.gamma = gamma
+        self.rnn_cell = tf.keras.layers.GRUCell(self.units)
+        self.rnn = tf.keras.layers.RNN(self.rnn_cell, return_state=True)
 
         def posterior(kernel_size, bias_size=0, dtype=None):
             n = kernel_size + bias_size
@@ -85,30 +78,25 @@ class FF(tf.keras.Model):
             return prior_model
 
         self.dense_var = tfp.layers.DenseVariational(units=2,
-                                                     make_posterior_fn=posterior,
-                                                     make_prior_fn=prior_trainable,
-                                                     kl_weight=self.kl_weight/n_batches,
-                                                     kl_use_exact=True)
+                                                      make_posterior_fn=posterior,
+                                                      make_prior_fn=prior_trainable,
+                                                      kl_weight=self.kl_weight/n_batches,
+                                                      kl_use_exact=True)
 
         self.DistributionLambda = tfp.layers.DistributionLambda(
-            lambda t: tfd.Normal(loc=t[..., :-1],
-                                 scale=op_scale * softplus(t[..., -1:], k=1.0)
+            lambda t: tfd.Normal(loc=t[..., :1],
+                                 scale=op_scale * softplus(t[..., 1:], k=1.0)
                                  )
         )
 
     def __call__(self, inputs, training=None):
-        x = self.flatten(inputs)
-        x = self.dense1(x)
-        x = self.dense2(x)
-        x = self.dense_var(x)
-        predictions = self.DistributionLambda(x)
+        x, *states = self.rnn(inputs)
+        x = self.dense_var(x, training=training)
 
-        return predictions
+        return self.DistributionLambda(x)
 
     def predict(self, x, n_steps=25, batch_size=None, verbose=False, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False):
         pred = []
-
-        # run the model k times until convergence
         for _ in tqdm.trange(n_steps, disable = np.invert(verbose)):
             pred.append(self(x))
 
@@ -118,4 +106,4 @@ class FF(tf.keras.Model):
 
         std = np.sqrt(means.var(0) + vars.mean(0))
 
-        return mean, std, {'Model_Uncertainty': np.sqrt(means.var(0)), 'Data_Uncertainty':np.sqrt(vars.mean(0))}
+        return mean, std, {'model': np.sqrt(means.var(0)), 'data':np.sqrt(vars.mean(0))}

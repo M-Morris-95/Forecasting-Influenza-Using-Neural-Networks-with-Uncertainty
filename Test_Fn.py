@@ -1,89 +1,17 @@
 import os
-
-from Data_Builder import *
+from DataConstructor import *
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import json
 import Metrics
+import numpy as np
 
-def load_best(save_dir):
-    try:
-        file = open(save_dir+'optimiser_results.json', 'r')
-        res = json.load(file)
-        sorted = np.argsort(np.asarray([r['target'] for r in res]))[::-1]
-        res = [res[s] for s in sorted]
 
-        max = res[0]
 
-        return {'best':max, 'results':res}
-    except Exception as e:
-        print(e)
-        return 0
-        pass
+from optimiser_tools import *
 
-def convert_to_df(op, true, dates, _data, type='FF', gamma=7):
-    try:
-        op[2]['Model_Uncertainty'] = op[2].pop('model')
-        op[2]['Data_Uncertainty'] = op[2].pop('data')
-    except:
-        pass
-
-    if type == 'multi':
-        if len(op) == 3:
-            columns=['True', 'Pred', 'Std', 'Model_Uncertainty', 'Data_Uncertainty']
-        else:
-            columns=['True', 'Pred', 'Std']
-
-        gammas = list(np.linspace(1, op[0].shape[1], op[0].shape[1]).astype(int))
-
-        res = {}
-        for g in gammas:
-            mean = op[0][:, g-1, -1].squeeze()
-            std = op[1][:, g-1, -1].squeeze()
-
-            data = [true[:, g-1, -1].squeeze(), mean, std]
-
-            try:
-                model_uncertainty = op[2]['Model_Uncertainty'][:, g-1, -1].squeeze()
-                data_uncertainy = op[2]['Data_Uncertainty'][:, g-1, -1].squeeze()
-
-                data.append(model_uncertainty)
-                data.append(data_uncertainy)
-            except:
-                pass
-            df = pd.DataFrame(index = dates+dt.timedelta(days=int(g)-13), columns = columns, data = np.asarray(data).T)
-            df = rescale_df(df, _data.ili_scaler)
-            res[g] = df
-
-        return res
-
-    if type == 'single':
-        if len(op) == 3:
-            columns=['True', 'Pred', 'Std', 'Model_Uncertainty', 'Data_Uncertainty']
-        else:
-            columns=['True', 'Pred', 'Std']
-
-        mean = op[0].squeeze()
-        std = op[1].squeeze()
-
-        data = [true.squeeze(), mean, std]
-
-        try:
-            model_uncertainty = op[2]['Model_Uncertainty'].squeeze()
-            data_uncertainy = op[2]['Data_Uncertainty'].squeeze()
-
-            data.append(model_uncertainty)
-            data.append(data_uncertainy)
-        except:
-            pass
-
-        df = pd.DataFrame(index = dates, columns = columns, data = np.asarray(data).T)
-        df = rescale_df(df, _data.ili_scaler)
-
-        return df
-
-def Test_fn(root, model, n_queries=49, batch_size=32, test_seasons = [2015,2016,2017,2018], gammas = [7,14,21,28], runs=10, epochs=50, plot=True, verbose=True, data_gamma=None, **kwargs):
+def Test_fn(root, model, n_queries=28, batch_size=32, lr_power = -4.0, test_seasons = [2015,2016,2017,2018], gammas = [7,14,21,28], runs=10, epochs=10, plot=True, verbose=True, data_gamma=None, **kwargs):
     'Function to test a model regardless of type'
     plt.clf()
     if not os.path.exists(root):
@@ -153,10 +81,6 @@ def Test_fn(root, model, n_queries=49, batch_size=32, test_seasons = [2015,2016,
                 except:
                     pass
 
-                if _model.model_type != 'feedback':
-                    df = {gamma: df}
-
-
                 for g in df:
                     if len(skill.index) != len(list(df.keys())) and _model.model_type=='feedback':
                         skill = pd.DataFrame(index = list(df.keys()), columns = test_seasons)
@@ -193,24 +117,8 @@ def Test_fn(root, model, n_queries=49, batch_size=32, test_seasons = [2015,2016,
         save_file.close()
 
 if __name__ == '__main__':
-    # from FF import *
-    # from feedback_nowcasting_forecasting import *
-    from LSTM_old_style import *
-    # from Feedback_RNN import *
+    from IRNN import *
+    from FF import *
+    from SRNN import *
 
-    Test_fn(root = 'Results/old_lstm/', model = LSTM_old_style, gammas=[7,14,21,28], test_seasons = [2015])
-
-
-
-
-    mean = 0
-    std = 1
-    decay= 1.1
-    iter = 0
-
-    ls = []
-    for _ in range(28):
-        iter = iter * decay + np.random.normal(mean, std, 1)
-        ls.append(iter)
-    plt.plot(ls)
-    plt.show()
+    Test_fn(root = 'Results/FF/', model = FF, gammas=[7,14,21,28], epochs =40, test_seasons = [2015])

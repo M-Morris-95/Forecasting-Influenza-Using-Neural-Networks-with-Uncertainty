@@ -8,14 +8,12 @@ from scipy.stats import norm
 
 tfd = tfp.distributions
 
-
 def _normpdf(x):
     """Probability density function of a univariate standard Gaussian
     distribution with zero mean and unit variance.
     """
     _normconst = 1.0 / np.sqrt(2.0 * np.pi)
     return _normconst * np.exp(-(x * x) / 2.0)
-
 
 def crps(true, mean=None, std=None, grad=False):
     """
@@ -129,76 +127,6 @@ def mae(true, pred=None, bins=False):
 
     return tf.reduce_mean(tf.math.abs(true - pred)).numpy()
 
-def lag(true, pred=None, bins=False):
-    if isinstance(true, pd.DataFrame):
-        if bins:
-            idx = np.argmin(np.abs(true.cumsum(1) - 0.5).values, 1)
-            true.columns[idx].astype(float)
-            pred = true.columns[idx].astype(float) + 0.05
-            true = true['True'].values
-            pred = pred.values
-
-        else:
-            pred = true['Pred']
-            true = true['True']
-
-    try:
-        res = (true.index[np.argmax(true)] - pred.index[np.argmax(pred)]).days
-    except:
-        res = np.argmax(true) - np.argmax(pred)
-        if bins:
-            res *= 7
-        else:
-            print('oh no')
-
-    return np.asarray(res)
-
-
-def smape(true, pred=None, bins=False):
-    if isinstance(true, pd.DataFrame):
-        if bins:
-            idx = np.argmin(np.abs(true.cumsum(1) - 0.5).values, 1)
-            true.columns[idx].astype(float)
-            pred = true.columns[idx].astype(float) + 0.05
-            true = true['True'].values
-            pred = pred.values
-
-        else:
-            pred = true['Pred']
-            true = true['True']
-
-    return np.mean(100/true.shape[0] * np.sum(2 * np.abs(pred - true) / (np.abs(pred) + np.abs(true))))
-
-def mape(true, pred=None, bins=False):
-    if isinstance(true, pd.DataFrame):
-        if bins:
-            idx = np.argmin(np.abs(true.cumsum(1) - 0.5).values, 1)
-            true.columns[idx].astype(float)
-            pred = true.columns[idx].astype(float) + 0.05
-            true = true['True'].values
-            pred = pred.values
-
-        else:
-            pred = true['Pred']
-            true = true['True']
-    return np.mean(np.abs((true - pred)/true))*100
-
-
-
-def rmse(true, pred=None):
-    if isinstance(true, pd.DataFrame):
-        pred = true['Pred']
-        true = true['True']
-
-    return tf.sqrt(tf.reduce_mean(tf.square(true - pred))).numpy()
-
-def mse(true, pred=None):
-    if isinstance(true, pd.DataFrame):
-        pred = true['Pred']
-        true = true['True']
-
-    return (tf.reduce_mean(tf.square(true - pred))).numpy()
-
 def corr(true, pred=None, bins=False):
     if isinstance(true, pd.DataFrame):
         if bins:
@@ -263,59 +191,5 @@ def mb_log(true, mean=None, std=None, bins=False):
         print(e)
         return -10
 
-def log_score(true, mean=None, std=None, bins=False):
-    if bins:
-        correct_bin = np.floor(true['True']*10)/10
-        correct_bin = pd.DataFrame(index = correct_bin.index, data = [float("{:.1f}".format(v)) for v in correct_bin.values])
-
-        cols = [float("{:.1f}".format(v)) for v in true.columns[:-1]]
-        cols.append('True')
-        true.columns = cols
-
-        mbl = np.asarray([])
-        for idx in true.index:
-            bin = correct_bin.loc[idx][0]
-            lower = float("{:.1f}".format(bin))
-            mbl = np.append(mbl, np.log(true.loc[idx, lower].sum()))
-            mbl[mbl<-10] = -10
-        return mbl
-    try:
-        if isinstance(true, pd.DataFrame):
-            mean = true['Pred']
-            std = true['Std']
-            true = true['True']
-
-        dist = tfp.distributions.Normal(loc=mean, scale=std)
-
-        mbl = np.log((dist.cdf(true + 0.1) - dist.cdf(true)).numpy())
-        mbl[np.invert(np.isfinite(mbl))] = -10
-
-        mbl[mbl<-10] = -10
-
-        return mbl
-
-    except Exception as e:
-        print(e)
-        return -10
-
-
 def skill(prediction, bins=False):
     return np.exp(mb_log(prediction, bins=bins).mean())
-
-
-def smooth(y):
-    y_prime = []
-    for i in range(7, y.shape[0] - 7):
-        y_prime.append(np.mean(y[i - 7:i + 8]))
-    return np.asarray(y_prime)
-
-
-def sdp(true, pred=None):
-    if isinstance(true, pd.DataFrame):
-        pred = true['Pred'].values
-        true = true['True'].values
-
-    y_true_prime = smooth(true)
-    y_pred_prime = smooth(pred)
-
-    return np.argmax(y_true_prime) - np.argmax(y_pred_prime)
