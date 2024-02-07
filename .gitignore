@@ -8,4 +8,5 @@ data/.DS_Store
 *.pyc
 __pycache__/
 lib/__pycache__/
+Weights/
 
