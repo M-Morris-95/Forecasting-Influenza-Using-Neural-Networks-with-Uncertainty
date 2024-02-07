@@ -63,7 +63,6 @@ class IRNN_Full_Bayes(tf.keras.Model):
                  lag = 7, 
                  n_batches=249, 
                  n_regions = 1,
-                 n_samples=3,
                  sampling='once',
                  use_bn = False,
                  kl_use_exact=True, **kwargs):
@@ -78,60 +77,54 @@ class IRNN_Full_Bayes(tf.keras.Model):
         self.gamma = int(gamma)
         self.lag=lag
         self.n_batches = n_batches
-        self.n_samples = n_samples 
         self.sampling=sampling
         self.use_bn=use_bn
         self.kl_use_exact = kl_use_exact
         self.kl_d = 0.
         self.n_regions = n_regions
         
-
-        def rnn_posterior(shape, name, initializer, scale = None,  n_samples = 3, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
-            if scale == None:
-                # inspired by glorot uniform, doesn't work very well
-                scale = tf.math.sqrt(2/(shape[0] + shape[1]))
-            
-            c = np.log(np.expm1(1.))
+        def posterior(shape, name, initializer, scale=None, q_scale=0.56, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
+            # c = np.log(np.expm1(1.))
+            c = 0.541324854612918
             posterior_model = tf.keras.Sequential([
                 tfp.layers.VariableLayer((2, ) + shape, dtype=dtype, trainable=True,
                                             initializer=lambda shape, dtype: initializer(shape, dtype),
                                             regularizer = regularizer,
                                             name=name
                                             ),
-
                 tfp.layers.DistributionLambda(lambda t: tfd.Independent(
                     tfd.MultivariateNormalDiag(loc=t[0],
                                                 scale_diag=1e-5 + q_scale*tf.nn.softplus(c + t[1])),
+                                                reinterpreted_batch_ndims=0
                 ))
             ])
             return posterior_model
-        
-        def mean0_prior(shape, name, initializer,  scale = None,   n_samples = 3, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
-            if scale == None:
-                # inspired by glorot uniform, doesn't work very well
-                scale=tf.math.sqrt(2/(shape[0] + shape[1]))
-            
+
+        def mean0_prior(shape, name, initializer, scale=None, p_scale = 0.015, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
+            # c = np.log(np.expm1(1.))
+            c = 0.541324854612918
             prior_model = tf.keras.Sequential([
                 tfp.layers.VariableLayer(shape, dtype=dtype, trainable=True,
-                                            initializer=initializer,
-                                            regularizer = regularizer,
-                                            name=name
-                                            ),
+                                        initializer=initializer,
+                                        regularizer=regularizer,
+                                        name=name
+                                        ),
+
                 tfp.layers.DistributionLambda(lambda t: tfd.Independent(
-                    tfd.MultivariateNormalDiag(loc = tf.zeros(shape), scale_diag =p_scale*tf.nn.softplus(c + t))
+                    tfd.MultivariateNormalDiag(loc=tf.zeros(shape), scale_diag=p_scale * tf.nn.softplus(c + t)),
+                    reinterpreted_batch_ndims=0
                 ))
             ])
             return prior_model
-        
+
         self.rnn_cell = GRU_Cell_Variational(
             int(rnn_units), 
             kernel_prior_fn = mean0_prior, 
-            kernel_posterior_fn = rnn_posterior,
+            kernel_posterior_fn = posterior,
             recurrent_kernel_prior_fn = mean0_prior, 
-            recurrent_kernel_posterior_fn = rnn_posterior,
+            recurrent_kernel_posterior_fn = posterior,
             bias_prior_fn = mean0_prior,
-            bias_posterior_fn = rnn_posterior, 
-            n_samples = n_samples,
+            bias_posterior_fn = posterior, 
             scale = q_scale,
             kl_weight = self.kl_weight,
             sampling=self.sampling
@@ -143,11 +136,10 @@ class IRNN_Full_Bayes(tf.keras.Model):
         self.dense_var = DenseVariational_repareterisation(
             units=int(n_op*2),
             last_dim=int(rnn_units),
-            make_posterior_fn=rnn_posterior,
+            make_posterior_fn=posterior,
             make_prior_fn=mean0_prior,
             initializer=random_gaussian_initializer,
             scale = q_scale,
-            n_samples=n_samples,
             kl_weight=self.kl_weight
         )            
         self.BN = tf.keras.layers.BatchNormalization()
