@@ -62,7 +62,6 @@ class DenseVariational_repareterisation(tf.keras.layers.Layer):
                  regularizer = None, 
                  activity_regularizer=None,
                  last_dim=None,
-                 n_samples=4,
                  **kwargs):
         """Creates the `DenseVariational` layer.
         Args:
@@ -107,7 +106,6 @@ class DenseVariational_repareterisation(tf.keras.layers.Layer):
         self.activation = tf.keras.activations.get(activation)
         self.use_bias = use_bias
         self.supports_masking = False
-        self.n_samples = n_samples
         self.input_spec = tf.keras.layers.InputSpec(min_ndim=2)
     
     def build(self, input_shape):
@@ -135,7 +133,6 @@ class DenseVariational_repareterisation(tf.keras.layers.Layer):
                 initializer=self.initializer,
                 regularizer=self.regularizer,
                 constraint=self.constraint,
-                n_samples = self.n_samples
             )
 
 
@@ -147,7 +144,6 @@ class DenseVariational_repareterisation(tf.keras.layers.Layer):
                 initializer=self.initializer,
                 regularizer=self.regularizer,
                 constraint=self.constraint,
-                n_samples = self.n_samples
             )
 
         self.built = True
@@ -184,9 +180,6 @@ class DenseVariational_repareterisation(tf.keras.layers.Layer):
             outputs = tf.nn.bias_add(outputs, self.bias)
         else:
             inputs_shape = tf.shape(inputs)            
-            outputs = tf.map_fn(fn = lambda x: tf.matmul(x[0], x[1]), elems = (split_first(inputs, self.n_samples), self.kernel), dtype=tf.float32)
-            if self.use_bias:
-                outputs = tf.map_fn(fn = lambda x: tf.nn.bias_add(x[0], x[1]), elems = (outputs, self.bias), dtype=tf.float32)
             outputs = tf.reshape(outputs, (-1, tf.shape(outputs)[-1]))[:inputs_shape[0]]
 
         if self.activation is not None:

@@ -1,5 +1,6 @@
 import uuid
-import tensorflow.compat.v2 as tf
+# import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from keras import activations
 from keras import backend
@@ -69,7 +70,6 @@ class GRU_Cell_Variational(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         kernel_constraint=None,
         recurrent_constraint=None,
         bias_constraint=None,
-        n_samples = 4,
         dropout=0.0,
         kl_weight=None,
         kl_use_exact=False,
@@ -99,9 +99,14 @@ class GRU_Cell_Variational(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         self.use_bias = use_bias
         self.scale = scale
         self.sampling = sampling
-        self.kernel_initializer = initializers.get(kernel_initializer)
-        self.recurrent_initializer = initializers.get(recurrent_initializer)
-        self.bias_initializer = initializers.get(bias_initializer)
+        self.kernel_initializer_p = initializers.get(kernel_initializer)
+        self.recurrent_initializer_p = initializers.get(recurrent_initializer)
+        self.bias_initializer_p = initializers.get(bias_initializer)
+
+        self.kernel_initializer_q = initializers.get(kernel_initializer)
+        self.recurrent_initializer_q = initializers.get(recurrent_initializer)
+        self.bias_initializer_q = initializers.get(bias_initializer)
+
 
         self.kernel_regularizer = regularizers.get(kernel_regularizer)
         self.recurrent_regularizer = regularizers.get(recurrent_regularizer)
@@ -112,7 +117,6 @@ class GRU_Cell_Variational(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
         self.bias_constraint = constraints.get(bias_constraint)
 
         self.dropout = min(1.0, max(0.0, dropout))
-        self.n_samples = n_samples
 
         self.kernel_prior_fn = kernel_prior_fn
         self.kernel_posterior_fn = kernel_posterior_fn
@@ -142,40 +146,36 @@ class GRU_Cell_Variational(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
             shape=self.kernel_shape,
             name="kernel_prior",
             scale = self.scale,
-            initializer=self.kernel_initializer,
+            initializer=self.kernel_initializer_p,
             regularizer=self.kernel_regularizer,
             constraint=self.kernel_constraint,
-            n_samples = self.n_samples
         )
 
         self._kernel_posterior = self.kernel_posterior_fn(
             shape=self.kernel_shape,
             name="kernel_posterior",
             scale = self.scale,
-            initializer=self.kernel_initializer,
+            initializer=self.kernel_initializer_q,
             regularizer=self.kernel_regularizer,
             constraint=self.kernel_constraint,
-            n_samples = self.n_samples
         )
 
         self._recurrent_kernel_prior = self.recurrent_kernel_prior_fn(
             shape=self.recurrent_kernel_shape,
             name="recurrent_kernel_prior",
             scale = self.scale,
-            initializer=self.recurrent_initializer,
+            initializer=self.recurrent_initializer_p,
             regularizer=self.recurrent_regularizer,
             constraint=self.recurrent_constraint,
-            n_samples = self.n_samples
         )
 
         self._recurrent_kernel_posterior = self.recurrent_kernel_posterior_fn(
             shape=self.recurrent_kernel_shape,
             name="recurrent_kernel_posterior",
             scale = self.scale,
-            initializer=self.recurrent_initializer,
+            initializer=self.recurrent_initializer_q,
             regularizer=self.recurrent_regularizer,
             constraint=self.recurrent_constraint,
-            n_samples = self.n_samples
         )          
 
         if self.use_bias:
@@ -192,19 +192,17 @@ class GRU_Cell_Variational(DropoutRNNCellMixin, base_layer.BaseRandomLayer):
                 shape=self.bias_shape,
                 name="bias_prior",
                 scale = self.scale,
-                initializer=self.bias_initializer,
+                initializer=self.bias_initializer_p,
                 regularizer=self.bias_regularizer,
                 constraint=self.bias_constraint,
-                n_samples = self.n_samples
             )
             self._bias_posterior = self.bias_posterior_fn(
                 shape=self.bias_shape,
                 name="bias_prior",
                 scale = self.scale,
-                initializer=self.bias_initializer,
+                initializer=self.bias_initializer_q,
                 regularizer=self.bias_regularizer,
                 constraint=self.bias_constraint,
-                n_samples = self.n_samples
             )
 
         else:
