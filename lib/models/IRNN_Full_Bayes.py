@@ -83,9 +83,8 @@ class IRNN_Full_Bayes(tf.keras.Model):
         self.kl_d = 0.
         self.n_regions = n_regions
         
-        def posterior(shape, name, initializer, scale=None, q_scale=0.56, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
-            # c = np.log(np.expm1(1.))
-            c = 0.541324854612918
+        def posterior(shape, name, initializer, scale=None, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
+            c = np.log(np.expm1(1.))
             posterior_model = tf.keras.Sequential([
                 tfp.layers.VariableLayer((2, ) + shape, dtype=dtype, trainable=True,
                                             initializer=lambda shape, dtype: initializer(shape, dtype),
@@ -95,14 +94,13 @@ class IRNN_Full_Bayes(tf.keras.Model):
                 tfp.layers.DistributionLambda(lambda t: tfd.Independent(
                     tfd.MultivariateNormalDiag(loc=t[0],
                                                 scale_diag=1e-5 + q_scale*tf.nn.softplus(c + t[1])),
-                                                reinterpreted_batch_ndims=0
+                                                reinterpreted_batch_ndims=None
                 ))
             ])
             return posterior_model
 
-        def mean0_prior(shape, name, initializer, scale=None, p_scale = 0.015, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
-            # c = np.log(np.expm1(1.))
-            c = 0.541324854612918
+        def mean0_prior(shape, name, initializer, scale=None, regularizer=None, constraint=None, cashing_device=None, dtype=tf.float32):
+            c = np.log(np.expm1(1.))
             prior_model = tf.keras.Sequential([
                 tfp.layers.VariableLayer(shape, dtype=dtype, trainable=True,
                                         initializer=initializer,
@@ -112,7 +110,7 @@ class IRNN_Full_Bayes(tf.keras.Model):
 
                 tfp.layers.DistributionLambda(lambda t: tfd.Independent(
                     tfd.MultivariateNormalDiag(loc=tf.zeros(shape), scale_diag=p_scale * tf.nn.softplus(c + t)),
-                    reinterpreted_batch_ndims=0
+                    reinterpreted_batch_ndims=None
                 ))
             ])
             return prior_model
