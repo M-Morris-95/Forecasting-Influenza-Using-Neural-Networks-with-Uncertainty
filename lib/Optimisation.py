@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow_probability as tfp
 import Metrics
-from optimiser_tools import *
-from DataConstructor import *
+from utils import *
+from regional_data_builder import *
 
 
 # Class to evaluate a set of hyper parameters. 
