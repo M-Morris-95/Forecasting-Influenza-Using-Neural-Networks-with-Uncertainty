@@ -1,10 +1,6 @@
 
-data/query_data/US_query_data_7_day_avg.csv
-data/query_data/US_query_data_all.csv
-
-data/embeddings/Query_Embeddings.csv
-data/embeddings/Twitter_word_embeddings_CBOW.csv
-data/embeddings/vocabulary.txt
+data/Queries/US_query_data_all_smoothed.csv
+data/Queries/state_queries/
 
 data/.DS_Store
 .DS_Store
