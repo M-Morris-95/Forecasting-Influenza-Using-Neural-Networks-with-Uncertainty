@@ -4,3 +4,8 @@ data/Queries/state_queries/
 
 data/.DS_Store
 .DS_Store
+
+*.pyc
+__pycache__/
+lib/__pycache__/
+
