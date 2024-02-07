@@ -1,12 +1,21 @@
-import tensorflow as tf
-import tensorflow_probability as tfp
-from scipy.stats import pearsonr
-from scipy import special
 import pandas as pd
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import pearsonr, norm
+from scipy import special
 
-tfd = tfp.distributions
+
+def get_calibration(forecast):
+    def calc_in_range(pred, z):
+        return(np.sum(np.logical_and((pred['Pred'] - z * pred['Std']) < pred['True'],
+                                     (pred['Pred'] + z * pred['Std']) > pred['True'])))
+
+    stds = np.linspace(0, 3, 50)
+    freq = np.zeros(stds.shape)
+    probs = norm.cdf(stds) - norm.cdf(-stds)
+    for idx, std in enumerate(stds):
+        freq[idx] = calc_in_range(forecast, std)/forecast.shape[0]
+
+    return {'prob':probs, 'freq':freq}
 
 def _normpdf(x):
     """Probability density function of a univariate standard Gaussian
@@ -82,12 +91,13 @@ def nll(true, mean=None, std=None):
             mean = true['Pred']
             std = true['Std']
             true = true['True']
-        p_y = tfp.distributions.Normal(mean, std)
-        return (-p_y.log_prob(true)).numpy().mean()
+
+        p_y = norm(loc=mean, scale=std)
+        return (-np.log(p_y.pdf(true))).mean()
+
     except Exception as e:
         print(e)
         return 100
-
 def cal(true, mean=None, std=None):
     try:
         if isinstance(true, pd.DataFrame):
@@ -115,8 +125,8 @@ def cal(true, mean=None, std=None):
 def mae(true, pred=None, bins=False):
     if isinstance(true, pd.DataFrame):
         if bins:
-            idx = np.argmin(np.abs(true.cumsum(1) - 0.5).values, 1)
-            true.columns[idx].astype(float)
+            idx = np.argmin(np.abs(true.cumsum(1).values - 0.5), axis=1)
+            true.columns = true.columns.astype(float)
             pred = true.columns[idx].astype(float) + 0.05
             true = true['True'].values
             pred = pred.values
@@ -125,7 +135,8 @@ def mae(true, pred=None, bins=False):
             pred = true['Pred']
             true = true['True']
 
-    return tf.reduce_mean(tf.math.abs(true - pred)).numpy()
+    return np.mean(np.abs(true - pred))
+
 
 def corr(true, pred=None, bins=False):
     if isinstance(true, pd.DataFrame):
@@ -158,7 +169,7 @@ def corr(true, pred=None, bins=False):
 def mb_log(true, mean=None, std=None, bins=False):
     if bins:
         correct_bin = np.floor(true['True']*10)/10
-        correct_bin = pd.DataFrame(index = correct_bin.index, data = [float("{:.1f}".format(v)) for v in correct_bin.values])
+        correct_bin = pd.DataFrame(index=correct_bin.index, data=[float("{:.1f}".format(v)) for v in correct_bin.values])
 
         cols = [float("{:.1f}".format(v)) for v in true.columns[:-1]]
         cols.append('True')
@@ -166,9 +177,9 @@ def mb_log(true, mean=None, std=None, bins=False):
 
         mbl = np.asarray([])
         for idx in true.index:
-            bin = correct_bin.loc[idx][0]
-            lower = float("{:.1f}".format(bin-0.5))
-            upper = float("{:.1f}".format(bin+0.5))
+            bin_val = correct_bin.loc[idx][0]
+            lower = float("{:.1f}".format(bin_val - 0.5))
+            upper = float("{:.1f}".format(bin_val + 0.5))
             mbl = np.append(mbl, np.log(true.loc[idx, lower:upper].sum()))
 
         return mbl
@@ -178,12 +189,11 @@ def mb_log(true, mean=None, std=None, bins=False):
             std = true['Std']
             true = true['True']
 
-        dist = tfp.distributions.Normal(loc=mean, scale=std)
+        dist = norm(loc=mean, scale=std)
 
-        mbl = np.log((dist.cdf(true + 0.6) - dist.cdf(true - 0.5)).numpy())
+        mbl = np.log((dist.cdf(true + 0.6) - dist.cdf(true - 0.5)))
         mbl[np.invert(np.isfinite(mbl))] = -10
-
-        mbl[mbl<-10] = -10
+        mbl[mbl < -10] = -10
 
         return mbl
 
