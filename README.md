@@ -20,16 +20,20 @@ Functions to compute metrics are in `Metrics.py`
 `Test_Fn.py` contains a class to forecast ILI rates on the test set. This automatically reads hyper-parameters saved in the Results directory (generated with `optimisation.py`). If none are available then default parameters defined in the model classes will be used.
 
 ## References
-(will update this in the future)
-
 The paper corresponding with this work is:
 
 Michael Morris, Peter Hayes, Ingemar J. Cox, Vasileios Lampos. "Neural network models for influenza forecasting with associated uncertainty using Web search activity trends."
 
 ```
-@article{morris2022NN,
-  title={Neural network models for influenza forecasting with associated uncertainty using Web search activity trends},
-  author={Morris, Michael and Hayes, Peter and Cox, Ingemar J. and Lampos, Vasileios}
+@article{morris2023neural,
+  title={Neural network models for influenza forecasting with associated uncertainty using web search activity trends},
+  author={Morris, Michael and Hayes, Peter and Cox, Ingemar J and Lampos, Vasileios},
+  journal={PLoS Computational Biology},
+  volume={19},
+  number={8},
+  pages={e1011392},
+  year={2023},
+  publisher={Public Library of Science San Francisco, CA USA}
 }
 ```
 
