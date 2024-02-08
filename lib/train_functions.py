@@ -40,42 +40,7 @@ def split_uneven(x, n, axis=0):
     ls.append(x[new_size:])
     return ls
 
-@tf.function
-def train_step(_model, x, y, loss_fn, optimizer, kl_w=1, prediction_steps=3, split_steps=3):
-    # _model: The machine learning model to be trained.
-    # x: The input data batch.
-    # y: The corresponding labels batch.
-    # loss_fn: The loss function used for calculating the loss.
-    # optimizer: The optimizer used for optimizing the model's parameters.
-    # kl_w: The weight for the KL divergence term. Default is 1.
-    # prediction_steps: The number of prediction steps used for computing the predictive distribution parameters. Default is 3, higher is better but slower.
-    # split_steps: The number of steps to split the input data and labels - don't want to use the same samples for every run in a batch. Default is 3, higher is better but slower.
 
-    with tf.GradientTape() as tape:
-        nll = []
-        for xn, yn in zip(split_uneven(x, split_steps), split_uneven(y, split_steps)):
-            pred = [_model(xn, training = True) for _ in range(prediction_steps)]
-
-            means = tf.convert_to_tensor([p.mean() for p in pred])
-            vars = tf.convert_to_tensor([p.variance() for p in pred])
-
-            mean = tf.reduce_mean(means, 0)
-            std = tf.math.sqrt(tf.reduce_mean(vars, 0) + tf.math.reduce_variance(means, 0))
-
-            y_hat = tfp.distributions.Normal(mean, std)
-            nll.append(loss_fn(yn, y_hat))
-        
-        nll = tf.reduce_mean(tf.concat(nll, 0))
-        kl = kl_w*tf.reduce_mean(tf.concat([_model.layers[0].KL_rec_kernel,
-                                        _model.layers[0].KL_kernel,
-                                        _model.layers[0].KL_bias, 
-                                        _model.layers[2].kl_penalty
-                                        ], 0))
-
-        loss_value = kl + nll
-    grads = tape.gradient(loss_value, _model.trainable_weights)
-    optimizer.apply_gradients(zip(grads, _model.trainable_weights))
-    return nll, kl
     
 def fit(_model, dataset, optimizer, loss_fn, epochs = 1, reset_pos=2000, split_steps = 3, prediction_steps =3):
     # _model: The machine learning model to be trained.
@@ -86,6 +51,42 @@ def fit(_model, dataset, optimizer, loss_fn, epochs = 1, reset_pos=2000, split_s
     # reset_pos: An integer indicating the position at which to reset the KL annealing. Default is 2000.
     # split_steps: An integer indicating the number of steps to split. Default is 3.
     # prediction_steps: An integer indicating the number of steps for prediction. Default is 3.
+    @tf.function
+    def train_step(_model, x, y, loss_fn, optimizer, kl_w=1, prediction_steps=3, split_steps=3):
+        # _model: The machine learning model to be trained.
+        # x: The input data batch.
+        # y: The corresponding labels batch.
+        # loss_fn: The loss function used for calculating the loss.
+        # optimizer: The optimizer used for optimizing the model's parameters.
+        # kl_w: The weight for the KL divergence term. Default is 1.
+        # prediction_steps: The number of prediction steps used for computing the predictive distribution parameters. Default is 3, higher is better but slower.
+        # split_steps: The number of steps to split the input data and labels - don't want to use the same samples for every run in a batch. Default is 3, higher is better but slower.
+
+        with tf.GradientTape() as tape:
+            nll = []
+            for xn, yn in zip(split_uneven(x, split_steps), split_uneven(y, split_steps)):
+                pred = [_model(xn, training = True) for _ in range(prediction_steps)]
+
+                means = tf.convert_to_tensor([p.mean() for p in pred])
+                vars = tf.convert_to_tensor([p.variance() for p in pred])
+
+                mean = tf.reduce_mean(means, 0)
+                std = tf.math.sqrt(tf.reduce_mean(vars, 0) + tf.math.reduce_variance(means, 0))
+
+                y_hat = tfp.distributions.Normal(mean, std)
+                nll.append(loss_fn(yn, y_hat))
+            
+            nll = tf.reduce_mean(tf.concat(nll, 0))
+            kl = kl_w*tf.reduce_mean(tf.concat([_model.layers[0].KL_rec_kernel,
+                                            _model.layers[0].KL_kernel,
+                                            _model.layers[0].KL_bias, 
+                                            _model.layers[2].kl_penalty
+                                            ], 0))
+
+            loss_value = kl + nll
+        grads = tape.gradient(loss_value, _model.trainable_weights)
+        optimizer.apply_gradients(zip(grads, _model.trainable_weights))
+        return nll, kl
 
     history = []
     for epoch in range(epochs):

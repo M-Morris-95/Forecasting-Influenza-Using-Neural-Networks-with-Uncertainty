@@ -30,7 +30,7 @@ class IRNN(tf.keras.Model):
 
     # upper and lower limits for optimization, good hyper parameters defined as standard.
     pbounds = {'rnn_units':(25,125),        # units in rnn layer
-               'n_queries':(20,100),        # number of queries
+               'n_op':(20,100),             # number of features
                'kl_power':(-3,0),           # KL annealing term = 10^kl_power
                'op_scale':(0.01, 0.1),      # scaling factor for output
                'prior_scale':(1e-4, 1e-2),  # prior stddev
@@ -39,10 +39,10 @@ class IRNN(tf.keras.Model):
                'q_scale':(0.001, 0.1)       # posterior scaling factor
                }
 
-    def __init__(self, rnn_units=128, n_queries=50, kl_power=-3, op_scale=0.05,
+    def __init__(self, n_op = 90, rnn_units=128, kl_power=-3, op_scale=0.05,
                  prior_scale=0.005, q_scale=0.02, gamma=28, n_batches=100, **kwargs):
         super().__init__()
-        num_features = int(n_queries+1)
+        n_op = int(n_op)
         rnn_units = int(rnn_units)
         self.gamma = gamma
         self.kl_weight = np.power(10.0, kl_power)
@@ -72,11 +72,10 @@ class IRNN(tf.keras.Model):
             ])
             return prior_model
 
-        
         self.gru_cell = tf.keras.layers.GRUCell(rnn_units)
         self.gru = tf.keras.layers.RNN(self.gru_cell, return_state=True)
         
-        self.dense_variational = tfp.layers.DenseVariational(units=num_features*2,
+        self.dense_variational = tfp.layers.DenseVariational(units=n_op*2,
                                                              make_posterior_fn=posterior,
                                                              make_prior_fn=prior_trainable,
                                                              kl_weight = self.kl_weight/n_batches,
@@ -84,8 +83,8 @@ class IRNN(tf.keras.Model):
                                                              )
         c = np.log(np.expm1(1.))
         self.distribution_lambda = tfp.layers.DistributionLambda(
-            lambda t: tfd.Normal(loc=t[..., :num_features],
-                                 scale=1e-5 + op_scale*tf.nn.softplus(c + t[..., num_features:])
+            lambda t: tfd.Normal(loc=t[..., :n_op],
+                                 scale=1e-5 + op_scale*tf.nn.softplus(c + t[..., n_op:])
                                  )
         )
     
