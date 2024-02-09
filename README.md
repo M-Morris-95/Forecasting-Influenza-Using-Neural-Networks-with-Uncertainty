@@ -6,9 +6,19 @@ This repository provides minimal code to recreate the experiments from 'Neural n
 ## Installation
 Code has been tested with `Python 3.8.5`, packages are listed in `requirements.txt`
 
-## Data Availability
 
-The Web search and ILI rates data sets that support this code available from Google and CDC, respectively. As CDC may update ILI rates retrospectively (e.g. by using increased sample rates or applying revisions in the ILI rate computation approach), we have also included the ILI rates used in our study. Restrictions apply to the availability of the Google search data set which was used under license for the current study, and so is not publicly available. This data set is however available upon reasonable request and with the respective permission of Google.
+## Data
+The Web search and ILI rates data sets that support this code are available from [Google](https://www.google.com) and [CDC](https://www.cdc.gov/), respectively. As CDC may update ILI rates retrospectively (e.g., by using increased sample rates or applying revisions in the ILI rate computation approach), we have also included the ILI rates used in our study.
+
+Restrictions apply to the availability of the Google search data set, which was used under license for the current study, and so is not publicly available. This data set is, however, available upon reasonable request and with the respective permission of Google.
+
+### Pre-smoothed US National Level Searches
+Pre-smoothed US national level searches are stored in `/data/Queries/US_query_data_all_smoothed.csv`.
+
+### Update: State and Regional Level Forecasts
+State level search queries are stored in the directory `/data/Queries/state_queries`, and are named by `{state_code}_query_data.csv`, where state codes are 'AK', 'AL', 'AR', etc.
+
+HHS level query data is created by aggregating state level queries by population.
 
 ## Basic Usage
 `FF`, `SRNN` and `IRNN` are model classes for the three neural networks in the paper. Each model has `pbounds` - the limits for each hyper parameter to be optimized with code from `Optimisation.py`, this requires some functions from `optimiser_tools.py`.
@@ -22,7 +32,7 @@ Functions to compute metrics are in `Metrics.py`
 ## References
 The paper corresponding with this work is:
 
-Michael Morris, Peter Hayes, Ingemar J. Cox, Vasileios Lampos. "Neural network models for influenza forecasting with associated uncertainty using Web search activity trends."
+Michael Morris, Peter Hayes, Ingemar J. Cox, Vasileios Lampos. "Neural network models for influenza forecasting with associated uncertainty using Web search activity trends." [[plos]](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011392)
 
 ```
 @article{morris2023neural,
