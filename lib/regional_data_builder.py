@@ -271,6 +271,9 @@ class DataConstructor:
         test_start = dt.datetime.strptime(train_test_dates['test_start'], '%Y-%m-%d')
         test_end = dt.datetime.strptime(train_test_dates['test_end'], '%Y-%m-%d')
 
+        self.train_dates = pd.date_range(train_start, train_end)
+        self.test_dates = pd.date_range(test_start, test_end)
+
         try:
             train_start = np.where([train_start == d for d in dates])[0][0]
         except:
